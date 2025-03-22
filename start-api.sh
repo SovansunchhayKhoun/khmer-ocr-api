@@ -1,1 +1,1 @@
-fastapi dev app/main.py
+fastapi dev app/main.py --port 3234
