@@ -2,3 +2,5 @@ fastapi[standard]==0.113.0
 pydantic==2.8.0
 pydantic_settings==2.8.1
 python-dotenv==1.0.1
+ultralytics==8.3.94
+transformers==4.49.0

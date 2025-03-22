@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.endpoints.item import item
+from app.api.endpoints.tr_ocr import tr_ocr
 from app import settings
 
 
@@ -15,3 +16,4 @@ async def read_root():
 
 
 app.include_router(item.router, tags=["Item"])
+app.include_router(tr_ocr.router, tags=["Tr Ocr"])
