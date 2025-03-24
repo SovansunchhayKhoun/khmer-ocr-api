@@ -8,20 +8,22 @@ def load_models():
     """Load all models and return them."""
     t1_start = perf_counter()
     print("Loading models...")
+    try:
+        # Load YOLO model
+        yolo_model = YOLO(MLModelPath.YOLO_V8.value)
 
-    # Load YOLO model
-    yolo_model = YOLO(MLModelPath.YOLO_V8.value)
+        # Load TrOCR processor and model
+        processor = TrOCRProcessor.from_pretrained(
+            MLModelPath.TROCR_KHMER.value, use_fast=True
+        )
+        trocr_model = VisionEncoderDecoderModel.from_pretrained(
+            MLModelPath.TROCR_KHMER.value
+        )
 
-    # Load TrOCR processor and model
-    processor = TrOCRProcessor.from_pretrained(
-        MLModelPath.TROCR_KHMER.value, use_fast=True
-    )
-    trocr_model = VisionEncoderDecoderModel.from_pretrained(
-        MLModelPath.TROCR_KHMER.value
-    )
-
-    print(f"Finished loading models, took {perf_counter() - t1_start:.2f}s")
-    return yolo_model, processor, trocr_model
+        print(f"Finished loading models, took {perf_counter() - t1_start:.2f}s")
+        return yolo_model, processor, trocr_model
+    except NameError:
+        print(NameError)
 
 
 # Load models at startup
