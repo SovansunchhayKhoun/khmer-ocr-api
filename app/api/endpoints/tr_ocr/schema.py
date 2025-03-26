@@ -1,22 +1,25 @@
+from typing import List
 from pydantic import BaseModel
 
 
-# class FileMetadata:
-#     fileName: str
-#     fileSize: int
-#     fileType: str
+class FileMetadata(BaseModel):
+    fileName: str
+    fileSize: int
+    fileType: str
 
 
-# class Prediction:
-#     text: str
-#     box: list[float]
+class BoundingBox(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
 
 
-# class TrOcrPredictionResponseModel(BaseModel):
-#     fileMetadata: FileMetadata
-#     prediction: Prediction
+class Prediction(BaseModel):
+    text: str
+    boundingBox: BoundingBox
 
 
 class TrOcrPredictionResponseModel(BaseModel):
-    text: str
-    box: list[float]
+    fileMetadata: FileMetadata
+    predictions: List[Prediction]
