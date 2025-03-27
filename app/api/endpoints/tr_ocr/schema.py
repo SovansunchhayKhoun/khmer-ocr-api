@@ -23,3 +23,9 @@ class Prediction(BaseModel):
 class TrOcrPredictionResponseModel(BaseModel):
     fileMetadata: FileMetadata
     predictions: List[Prediction]
+
+
+class TrOcrImagePredictionResponseModel(BaseModel):
+    fileMetadata: FileMetadata
+    predictions: List[Prediction]
+    image_bytes: bytes

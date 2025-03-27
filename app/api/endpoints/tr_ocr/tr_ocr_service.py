@@ -1,27 +1,20 @@
-import asyncio
 from typing import List
-from fastapi import APIRouter, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
-import io
+from fastapi import UploadFile, HTTPException
 import cv2
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import io
 import numpy as np
-from app.api.endpoints.tr_ocr.tr_ocr_service import (
-    draw_boxes_on_image,
-    process_image_file,
-)
+from app.constant.font_path_constant import FontPathConstant
 from app.ml_model import processor, yolo_model, trocr_model
 from app.api.endpoints.tr_ocr.schema import (
     FileMetadata,
     Prediction,
-    TrOcrPredictionResponseModel,
+    TrOcrImagePredictionResponseModel,
 )
 import torch
 
-router = APIRouter(prefix="/tr-ocr")
 
-
-async def process_file(file: UploadFile) -> TrOcrPredictionResponseModel:
+async def process_image_file(file: UploadFile) -> TrOcrImagePredictionResponseModel:
     """Processes a single file and returns a TrOcrPredictionResponseModel."""
     try:
         image_bytes = await file.read()
@@ -69,8 +62,10 @@ async def process_file(file: UploadFile) -> TrOcrPredictionResponseModel:
             fileName=file.filename, fileSize=file.size, fileType=file.content_type
         )
 
-        return TrOcrPredictionResponseModel(
-            fileMetadata=file_metadata, predictions=predictions
+        return TrOcrImagePredictionResponseModel(
+            fileMetadata=file_metadata,
+            predictions=predictions,
+            image_bytes=image_bytes,
         )
 
     except Exception as e:
@@ -78,30 +73,41 @@ async def process_file(file: UploadFile) -> TrOcrPredictionResponseModel:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/predict", response_model=List[TrOcrPredictionResponseModel])
-async def predict(files: List[UploadFile]):
+async def draw_boxes_on_image(
+    image_bytes: bytes, predictions: List[Prediction]
+) -> bytes:
+    """Draws bounding boxes and text on an image based on prediction data."""
     try:
-        tasks = [process_file(file) for file in files]
-        all_results = await asyncio.gather(*tasks)
-        return all_results
+        image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        image_pil = Image.fromarray(cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(image_pil)
+
+        try:
+            font = ImageFont.truetype(FontPathConstant.BATTAMBANG.value, 15)
+        except IOError:
+            font = ImageFont.load_default()
+            print("Warning: Arial font not found, using default font.")
+
+        for prediction in predictions:
+            bbox = prediction.boundingBox
+            x_min = int(bbox.x)
+            y_min = int(bbox.y)
+            x_max = int(bbox.width)
+            y_max = int(bbox.height)
+            text = prediction.text
+
+            # Draw rectangle
+            draw.rectangle([(x_min, y_min), (x_max, y_max)], outline="red", width=2)
+
+            # Draw text above the bounding box
+            text_x = x_min
+            text_y = y_min - 15  # Adjust vertical position as needed
+            draw.text((text_x, text_y), text, fill="red", font=font)
+
+        img_byte_arr = io.BytesIO()
+        image_pil.save(img_byte_arr, format="PNG")
+        return img_byte_arr.getvalue()
 
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post(
-    "/visualize",
-    responses={200: {"content": {"image/png": {}}}},
-)
-async def visualize_with_bbox(file: UploadFile):
-    """Endpoint to process the file and return the image with bounding boxes."""
-    try:
-        prediction_response = await process_image_file(file)
-        image_with_boxes = await draw_boxes_on_image(
-            prediction_response.image_bytes, prediction_response.predictions
-        )
-        return StreamingResponse(io.BytesIO(image_with_boxes), media_type="image/png")
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise e
