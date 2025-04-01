@@ -171,3 +171,44 @@ async def draw_boxes_on_image(
     except Exception as e:
         print(e)
         raise e
+
+
+async def draw_predictions_on_image(
+    image_bytes: bytes, prediction: Prediction
+) -> bytes:
+    """Draws bounding boxes and text on an image based on a list of Prediction objects."""
+    try:
+        image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        image_pil = Image.fromarray(cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(image_pil)
+
+        try:
+            font = ImageFont.truetype(FontPathConstant.BATTAMBANG.value, 15)
+        except IOError:
+            font = ImageFont.load_default()
+            print("Warning: Battambang font not found, using default font.")
+
+        print(prediction)
+
+        bbox = prediction.boundingBox
+        x_min = int(bbox.x)
+        y_min = int(bbox.y)
+        x_max = int(bbox.width)
+        y_max = int(bbox.height)
+        text = prediction.text
+
+        # Draw rectangle
+        draw.rectangle([(x_min, y_min), (x_max, y_max)], outline="red", width=2)
+
+        # Draw text above the bounding box
+        text_x = x_min
+        text_y = y_min - 15  # Adjust vertical position as needed
+        draw.text((text_x, text_y), text, fill="red", font=font)
+
+        img_byte_arr = io.BytesIO()
+        image_pil.save(img_byte_arr, format="PNG")
+        return img_byte_arr.getvalue()
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
